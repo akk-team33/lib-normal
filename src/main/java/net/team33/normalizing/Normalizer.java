@@ -1,23 +1,33 @@
 package net.team33.normalizing;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
+import java.util.Map;
 import java.util.Set;
-import java.util.function.BiFunction;
+import java.util.function.Function;
 
 public class Normalizer {
 
-    private final List<Entry> entries;
+    private static final Set<String> FALSE_STRINGS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+            "",
+            "0",
+            "0.0",
+            "false",
+            null
+    )));
+
+    @SuppressWarnings("rawtypes")
+    private final Map<Class<?>, Function<Object, Normal>> functions =
+            new HashMap<Class<?>, Function<Object, Normal>>() {{
+                put(Character.class, Char::new);
+                put(Number.class, Numeric::new);
+            }};
 
     private Normalizer() {
-        entries = Arrays.asList(
-                new Entry(Number.class, Numeric::new),
-                new Entry(CharSequence.class, Text::new),
-                new Entry(Set.class, MySet::new)
-        );
     }
 
     public static Normalizer instance() {
@@ -28,48 +38,78 @@ public class Normalizer {
         if (null == original) {
             return Normal.NULL;
         } else {
-            return entries.stream()
-                    .filter(entry -> entry.oriClass.isInstance(original))
-                    .findFirst()
-                    .map(entry -> entry.mapping.apply(this, original))
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            String.format("unknown: <%s> of <%s>", original, original.getClass())));
+            return getFunction(original.getClass()).apply(original);
         }
     }
 
-    private static class Basic<T> implements Normal {
-        @SuppressWarnings("PackageVisibleField")
-        final T backing;
-
-        private Basic(final T backing) {
-            this.backing = backing;
-        }
+    private Function<Object, Normal> getFunction(final Class<?> originalClass) {
+        return functions.entrySet().stream()
+                .filter(entry -> entry.getKey().isAssignableFrom(originalClass))
+                .findFirst()
+                .orElseThrow(() -> new UnsupportedOperationException("not yet implemented"))
+                .getValue();
     }
 
-    private static class Numeric extends Basic<String> {
-        public static final char DECIMAL_DOT = '.';
+    private static class Char extends Normal {
+        private static final char NULL_CHAR = '\0';
 
-        private Numeric(final Normalizer normalizer, final Object original) {
-            super(original.toString());
+        private final char backing;
+
+        private Char(final Object original) {
+            this((Character) original);
         }
 
-        private static String prefix(final String value) {
-            final int index = value.indexOf(DECIMAL_DOT);
-            return (0 > index) ? value : value.substring(0, index);
+        ;
+
+        private Char(final Character original) {
+            backing = original;
         }
 
-        @Override public final Integer asInteger() {
-            return Integer.valueOf(prefix(backing));
+        @Override public final boolean asBoolean() {
+            return NULL_CHAR != backing;
         }
 
         @Override public final BigInteger asBigInteger() {
-            return new BigInteger(prefix(backing));
+            return BigInteger.valueOf(backing);
+        }
+
+        @Override public final BigDecimal asBigDecimal() {
+            return BigDecimal.valueOf(backing);
+        }
+
+        @Override public final char asCharacter() {
+            return backing;
+        }
+
+        @Override public final String asString() {
+            return String.valueOf(backing);
         }
     }
 
-    private static class Text extends Basic<String> {
-        private Text(final Normalizer normalizer, final Object original) {
-            super(original.toString());
+    private static class Element extends Normal {
+        private static final char DECIMAL_DOT = '.';
+
+        private final String backing;
+
+        private Element(final String backing) {
+            this.backing = backing;
+        }
+
+        private static String decimalPrefix(final String value) {
+            final int dotIndex = value.indexOf(DECIMAL_DOT);
+            return (0 > dotIndex) ? value : value.substring(0, dotIndex);
+        }
+
+        @Override public final boolean asBoolean() {
+            return !FALSE_STRINGS.contains(asString());
+        }
+
+        @Override public final BigInteger asBigInteger() {
+            return new BigInteger(decimalPrefix(backing));
+        }
+
+        @Override public final BigDecimal asBigDecimal() {
+            return new BigDecimal(decimalPrefix(backing));
         }
 
         @Override public final String asString() {
@@ -77,29 +117,14 @@ public class Normalizer {
         }
     }
 
-    private static class MySet extends Basic<HashSet<Normal>> {
-        private MySet(final Normalizer normalizer, final Object original) {
-            this(normalizer, (Set<?>) original);
-
+    private static class Numeric extends Element {
+        private Numeric(final Object original) {
+            super(original.toString());
         }
 
-        private MySet(final Normalizer normalizer, final Set<?> original) {
-            super(new HashSet<>(0));
-            original.forEach(e -> backing.add(normalizer.normal(e)));
-        }
-
-        @Override public final Set<Normal> asSet() {
-            return Collections.unmodifiableSet(backing);
-        }
-    }
-
-    private static class Entry {
-        private final Class<?> oriClass;
-        private final BiFunction<Normalizer, Object, Normal> mapping;
-
-        private Entry(final Class<?> oriClass, final BiFunction<Normalizer, Object, Normal> mapping) {
-            this.oriClass = oriClass;
-            this.mapping = mapping;
+        @Override public final char asCharacter() {
+            //noinspection NumericCastThatLosesPrecision
+            return Character.valueOf((char) asBigInteger().intValue());
         }
     }
 }
