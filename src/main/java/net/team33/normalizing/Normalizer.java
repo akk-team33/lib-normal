@@ -4,8 +4,8 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
@@ -22,9 +22,10 @@ public class Normalizer {
 
     @SuppressWarnings("rawtypes")
     private final Map<Class<?>, Function<Object, Normal>> functions =
-            new HashMap<Class<?>, Function<Object, Normal>>() {{
+            new LinkedHashMap<Class<?>, Function<Object, Normal>>() {{
                 put(Character.class, Char::new);
-                put(Number.class, Numeric::new);
+                put(Float.class, FloatX::new);
+                put(Double.class, DoubleX::new);
             }};
 
     private Normalizer() {
@@ -109,7 +110,7 @@ public class Normalizer {
         }
 
         @Override public final BigDecimal asBigDecimal() {
-            return new BigDecimal(decimalPrefix(backing));
+            return new BigDecimal(backing);
         }
 
         @Override public final String asString() {
@@ -117,14 +118,44 @@ public class Normalizer {
         }
     }
 
-    private static class Numeric extends Element {
-        private Numeric(final Object original) {
-            super(original.toString());
+    private static class Rational extends Normal {
+        private final BigDecimal original;
+
+        private Rational(final BigDecimal original) {
+            this.original = original;
+        }
+
+        @Override public final boolean asBoolean() {
+            return 0 != BigDecimal.ZERO.compareTo(original);
         }
 
         @Override public final char asCharacter() {
             //noinspection NumericCastThatLosesPrecision
             return Character.valueOf((char) asBigInteger().intValue());
+        }
+
+        @Override public final BigInteger asBigInteger() {
+            return original.toBigInteger();
+        }
+
+        @Override public final BigDecimal asBigDecimal() {
+            return original;
+        }
+
+        @Override public final String asString() {
+            return original.toString();
+        }
+    }
+
+    private static class FloatX extends Rational {
+        private FloatX(final Object original) {
+            super(BigDecimal.valueOf((Float) original));
+        }
+    }
+
+    private static class DoubleX extends Rational {
+        private DoubleX(final Object original) {
+            super(BigDecimal.valueOf((Double) original));
         }
     }
 }
