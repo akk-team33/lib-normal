@@ -105,6 +105,15 @@ public class NormalizerNumberTest<T extends Number> {
         );
     }
 
+//    @Test
+//    public final void asList() {
+//        final T value = nonZero.apply(random);
+//        final Normal normal = normalizer.normal(value);
+//        final List<Normal> list = normal.asList();
+//        Assert.assertEquals(1, list.size());
+//        Assert.assertSame(normal, list.get(0));
+//    }
+
     @Test
     public final void fromNumber() {
         Stream.concat(

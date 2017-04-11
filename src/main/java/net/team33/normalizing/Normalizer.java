@@ -1,5 +1,8 @@
 package net.team33.normalizing;
 
+import net.team33.normalizing.normal.Integral;
+import net.team33.normalizing.normal.Rational;
+
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Arrays;
