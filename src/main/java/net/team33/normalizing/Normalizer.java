@@ -23,9 +23,14 @@ public class Normalizer {
     @SuppressWarnings("rawtypes")
     private final Map<Class<?>, Function<Object, Normal>> functions =
             new LinkedHashMap<Class<?>, Function<Object, Normal>>() {{
-                put(Character.class, Char::new);
-                put(Float.class, FloatX::new);
-                put(Double.class, DoubleX::new);
+                put(Byte.class, original -> new Integral(BigInteger.valueOf((Byte) original)));
+                put(Short.class, original -> new Integral(BigInteger.valueOf((Short) original)));
+                put(Integer.class, original -> new Integral(BigInteger.valueOf((Integer) original)));
+                put(Long.class, original -> new Integral(BigInteger.valueOf((Long) original)));
+                put(BigInteger.class, (original) -> new Integral((BigInteger) original));
+                put(Float.class, original -> new Rational(BigDecimal.valueOf((Float) original)));
+                put(Double.class, original -> new Rational(BigDecimal.valueOf((Double) original)));
+                put(BigDecimal.class, original -> new Rational((BigDecimal) original));
             }};
 
     private Normalizer() {
@@ -49,102 +54,6 @@ public class Normalizer {
                 .findFirst()
                 .orElseThrow(() -> new UnsupportedOperationException("not yet implemented"))
                 .getValue();
-    }
-
-    private static class Char extends Normal {
-        private static final char NULL_CHAR = '\0';
-
-        private final char backing;
-
-        private Char(final Object original) {
-            this((Character) original);
-        }
-
-        ;
-
-        private Char(final Character original) {
-            backing = original;
-        }
-
-        @Override public final boolean asBoolean() {
-            return NULL_CHAR != backing;
-        }
-
-        @Override public final BigInteger asBigInteger() {
-            return BigInteger.valueOf(backing);
-        }
-
-        @Override public final BigDecimal asBigDecimal() {
-            return BigDecimal.valueOf(backing);
-        }
-
-        @Override public final char asCharacter() {
-            return backing;
-        }
-
-        @Override public final String asString() {
-            return String.valueOf(backing);
-        }
-    }
-
-    private static class Element extends Normal {
-        private static final char DECIMAL_DOT = '.';
-
-        private final String backing;
-
-        private Element(final String backing) {
-            this.backing = backing;
-        }
-
-        private static String decimalPrefix(final String value) {
-            final int dotIndex = value.indexOf(DECIMAL_DOT);
-            return (0 > dotIndex) ? value : value.substring(0, dotIndex);
-        }
-
-        @Override public final boolean asBoolean() {
-            return !FALSE_STRINGS.contains(asString());
-        }
-
-        @Override public final BigInteger asBigInteger() {
-            return new BigInteger(decimalPrefix(backing));
-        }
-
-        @Override public final BigDecimal asBigDecimal() {
-            return new BigDecimal(backing);
-        }
-
-        @Override public final String asString() {
-            return backing;
-        }
-    }
-
-    private static class Rational extends Normal {
-        private final BigDecimal original;
-
-        private Rational(final BigDecimal original) {
-            this.original = original;
-        }
-
-        @Override public final boolean asBoolean() {
-            return 0 != BigDecimal.ZERO.compareTo(original);
-        }
-
-        @Override public final char asCharacter() {
-            //noinspection NumericCastThatLosesPrecision
-            return Character.valueOf((char) asBigInteger().intValue());
-        }
-
-        @Override public final BigInteger asBigInteger() {
-            return original.toBigInteger();
-        }
-
-        @Override public final BigDecimal asBigDecimal() {
-            return original;
-        }
-
-        @Override public final String asString() {
-            return original.toString();
-        }
     }
 
     private static class FloatX extends Rational {

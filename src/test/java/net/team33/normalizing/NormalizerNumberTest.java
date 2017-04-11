@@ -29,12 +29,30 @@ public class NormalizerNumberTest<T extends Number> {
             NEW_BIG_INTEGER.apply(rd),
             NEW_BYTE.apply(rd)
     );
+    private static final Function<Byte, BigInteger> BYT_TO_BIG_INT = BigInteger::valueOf;
+    private static final Function<Byte, BigDecimal> BYT_TO_BIG_DEC = BigDecimal::valueOf;
+    private static final Function<Byte, String> BYT_TO_STRING = Object::toString;
+    private static final Function<Short, BigInteger> SHT_TO_BIG_INT = BigInteger::valueOf;
+    private static final Function<Short, BigDecimal> SHT_TO_BIG_DEC = BigDecimal::valueOf;
+    private static final Function<Short, String> SHT_TO_STRING = Object::toString;
+    private static final Function<Integer, BigInteger> INT_TO_BIG_INT = BigInteger::valueOf;
+    private static final Function<Integer, BigDecimal> INT_TO_BIG_DEC = BigDecimal::valueOf;
+    private static final Function<Integer, String> INT_TO_STRING = Object::toString;
+    private static final Function<Long, BigInteger> LNG_TO_BIG_INT = BigInteger::valueOf;
+    private static final Function<Long, BigDecimal> LNG_TO_BIG_DEC = BigDecimal::valueOf;
+    private static final Function<Long, String> LNG_TO_STRING = Object::toString;
     private static final Function<Float, BigInteger> FLT_TO_BIG_INT = flt -> BigDecimal.valueOf(flt).toBigInteger();
     private static final Function<Float, BigDecimal> FLT_TO_BIG_DEC = BigDecimal::valueOf;
     private static final Function<Float, String> FLT_TO_STRING = flt -> BigDecimal.valueOf(flt).toString();
     private static final Function<Double, BigInteger> DBL_TO_BIG_INT = dbl -> BigDecimal.valueOf(dbl).toBigInteger();
     private static final Function<Double, BigDecimal> DBL_TO_BIG_DEC = BigDecimal::valueOf;
     private static final Function<Double, String> DBL_TO_STRING = flt -> BigDecimal.valueOf(flt).toString();
+    private static final Function<BigInteger, BigInteger> BIG_INT_TO_BIG_INT = bi -> bi;
+    private static final Function<BigInteger, BigDecimal> BIG_INT_TO_BIG_DEC = BigDecimal::new;
+    private static final Function<BigInteger, String> BIG_INT_TO_STRING = BigInteger::toString;
+    private static final Function<BigDecimal, BigInteger> BIG_DEC_TO_BIG_INT = BigDecimal::toBigInteger;
+    private static final Function<BigDecimal, BigDecimal> BIG_DEC_TO_BIG_DEC = bd -> bd;
+    private static final Function<BigDecimal, String> BIG_DEC_TO_STRING = BigDecimal::toString;
 
     private final Normalizer normalizer = Normalizer.instance();
     private final Random random = new Random();
@@ -60,16 +78,30 @@ public class NormalizerNumberTest<T extends Number> {
     @Parameters(name = "{index}: {0}")
     public static Collection<Object[]> data() {
         return Arrays.<Object[]>asList(
-//                new Object[] {Byte.class, Byte.valueOf((byte) 0), NEW_BYTE, 299},
-//                new Object[] {Short.class, Short.valueOf((short) 0), NEW_SHORT, 999},
-//                new Object[] {Integer.class, Integer.valueOf(0), NEW_INTEGER, 999},
-//                new Object[] {Long.class, Long.valueOf(0), NEW_LONG, 999},
                 new Object[]{
-                        Float.class, Float.valueOf(0), NEW_FLOAT, FLT_TO_BIG_INT, FLT_TO_BIG_DEC, FLT_TO_STRING, 999},
+                        Byte.class, Byte.valueOf((byte) 0), NEW_BYTE,
+                        BYT_TO_BIG_INT, BYT_TO_BIG_DEC, BYT_TO_STRING, 299},
                 new Object[]{
-                        Double.class, Double.valueOf(0), NEW_DOUBLE, DBL_TO_BIG_INT, DBL_TO_BIG_DEC, DBL_TO_STRING, 999}/*,
-                new Object[] {BigInteger.class, BigInteger.ZERO, NEW_BIG_INTEGER, 999},
-                new Object[] {BigDecimal.class, BigDecimal.ZERO, NEW_BIG_DECIMAL, 999}*/
+                        Short.class, Short.valueOf((short) 0), NEW_SHORT,
+                        SHT_TO_BIG_INT, SHT_TO_BIG_DEC, SHT_TO_STRING, 999},
+                new Object[]{
+                        Integer.class, Integer.valueOf(0), NEW_INTEGER,
+                        INT_TO_BIG_INT, INT_TO_BIG_DEC, INT_TO_STRING, 999},
+                new Object[]{
+                        Long.class, Long.valueOf(0), NEW_LONG,
+                        LNG_TO_BIG_INT, LNG_TO_BIG_DEC, LNG_TO_STRING, 999},
+                new Object[]{
+                        Float.class, Float.valueOf(0), NEW_FLOAT,
+                        FLT_TO_BIG_INT, FLT_TO_BIG_DEC, FLT_TO_STRING, 999},
+                new Object[]{
+                        Double.class, Double.valueOf(0), NEW_DOUBLE,
+                        DBL_TO_BIG_INT, DBL_TO_BIG_DEC, DBL_TO_STRING, 999},
+                new Object[]{
+                        BigInteger.class, BigInteger.ZERO, NEW_BIG_INTEGER,
+                        BIG_INT_TO_BIG_INT, BIG_INT_TO_BIG_DEC, BIG_INT_TO_STRING, 999},
+                new Object[]{
+                        BigDecimal.class, BigDecimal.ZERO, NEW_BIG_DECIMAL,
+                        BIG_DEC_TO_BIG_INT, BIG_DEC_TO_BIG_DEC, BIG_DEC_TO_STRING, 999}
         );
     }
 
@@ -89,8 +121,8 @@ public class NormalizerNumberTest<T extends Number> {
             Assert.assertEquals(value.intValue(), normal.asInteger());
             Assert.assertEquals(value.longValue(), normal.asLong());
             Assert.assertEquals(toBigInteger.apply(value), normal.asBigInteger());
-            Assert.assertEquals(value.floatValue(), normal.asFloat(), 0.00001);
-            Assert.assertEquals(value.doubleValue(), normal.asDouble(), 0.00001);
+            Assert.assertEquals(value.floatValue(), normal.asFloat(), 0.0);
+            Assert.assertEquals(value.doubleValue(), normal.asDouble(), 0.0);
             Assert.assertEquals(toBigDecimal.apply(value), normal.asBigDecimal());
             Assert.assertEquals(Character.valueOf((char) value.intValue()).charValue(), normal.asCharacter());
             Assert.assertEquals(toString.apply(value), normal.asString());
