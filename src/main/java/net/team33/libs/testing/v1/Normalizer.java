@@ -37,8 +37,8 @@ public final class Normalizer {
         return new Builder();
     }
 
-    private static Map<String, Field> newFieldMap(final Class<?> subjectClass, final Class<?> key) {
-        return Fields.deepStreamOf(key)
+    private static Map<String, Field> newFieldMap(final Class<?> subjectClass) {
+        return Fields.deepStreamOf(subjectClass)
                      .filter(Fields.IS_SIGNIFICANT)
                      .peek(field -> field.setAccessible(true))
                      .collect(toMap(field -> Fields.compactName(subjectClass, field), field -> field));
@@ -61,9 +61,9 @@ public final class Normalizer {
     }
 
     public final Map<?, ?> normalFieldMap(final Class<?> subjectClass, final Object subject) {
-        return FIELDS_CACHE.computeIfAbsent(subjectClass, key -> newFieldMap(subjectClass, key))
+        return FIELDS_CACHE.computeIfAbsent(subjectClass, Normalizer::newFieldMap)
                            .entrySet().stream()
-                           .collect(TreeMap::new,
+                           .collect(NormalMap::new,
                                     (map, entry) -> put(map, entry, subject),
                                     Map::putAll);
     }
