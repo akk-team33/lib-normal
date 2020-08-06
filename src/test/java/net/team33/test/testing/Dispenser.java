@@ -123,7 +123,7 @@ public class Dispenser {
             private static final Set<Class<?>> INTEGER = Collections.unmodifiableSet(
                     new HashSet<>(Arrays.asList(Integer.class, int.class)));
             private static final Set<Class<?>> COMPOSITE = Collections.unmodifiableSet(
-                    new HashSet<>(Arrays.asList(Subject.class)));
+                    new HashSet<>(Arrays.asList(Sample.class)));
         }
     }
 

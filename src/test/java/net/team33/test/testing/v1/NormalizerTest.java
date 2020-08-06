@@ -1,7 +1,7 @@
 package net.team33.test.testing.v1;
 
 import net.team33.libs.testing.v1.Normalizer;
-import net.team33.test.testing.Subject;
+import net.team33.test.testing.Sample;
 import org.junit.Test;
 
 import java.math.BigInteger;
@@ -25,27 +25,34 @@ public class NormalizerTest {
 
     @Test
     public final void normal() {
-        final Subject subject = new Subject().setThePrimitive(random.nextInt())
-                                             .setTheString(anyString())
-                                             .setTheNumber(random.nextDouble())
-                                             .setTheByteArray(anyBytes())
-                                             .setTheList(anyList())
-                                             .setTheSet(anyList())
-                                             .setTheMap(anyMap());
-        final Object result = normalizer.normal(subject);
-        assertEquals(expected(subject), result);
+        final Sample sample = anySample();
+        final Object result = normal(sample);
+        System.out.println(result);
+        assertEquals(expected(sample), result);
     }
 
-    private static Map<String, Object> expected(final Subject subject) {
+    private Object normal(final Sample sample) {
+        return normalizer.normal(sample);
+    }
+
+    private static Map<String, Object> expected(final Sample sample) {
         final Map<String, Object> result = new TreeMap<>();
-        result.put("thePrimitive", subject.getThePrimitive());
-        result.put("theString", subject.getTheString());
-        result.put("theNumber", subject.getTheNumber());
-        result.put("theByteArray", expected(subject.getTheByteArray()));
-        result.put("theObject", subject.getTheObject());
-        result.put("theList", expected(subject.getTheList()));
-        result.put("theSet", expected(subject.getTheSet()));
-        result.put("theMap", expected(subject.getTheMap()));
+        result.put("thePrimitive", sample.getThePrimitive());
+        result.put("theString", sample.getTheString());
+        result.put("theNumber", sample.getTheNumber());
+        result.put("theByteArray", expected(sample.getTheByteArray()));
+        result.put("theObject", sample.getTheObject());
+        result.put("theList", expected(sample.getTheList()));
+        result.put("theSet", expected(sample.getTheSet()));
+        result.put("theMap", expected(sample.getTheMap()));
+        result.put(".theSuperPrimitive", sample.getTheSuperPrimitive());
+        result.put(".theSuperString", sample.getTheSuperString());
+        result.put(".theSuperNumber", sample.getTheSuperNumber());
+        result.put(".theSuperByteArray", expected(sample.getTheSuperByteArray()));
+        result.put(".theSuperObject", sample.getTheSuperObject());
+        result.put(".theSuperList", expected(sample.getTheSuperList()));
+        result.put(".theSuperSet", expected(sample.getTheSuperSet()));
+        result.put(".theSuperMap", expected(sample.getTheSuperMap()));
         return result;
     }
 
@@ -68,7 +75,7 @@ public class NormalizerTest {
 
     private static Object expected(final Object subject) {
         if (subject instanceof byte[]) return expected((byte[]) subject);
-        if (subject instanceof Subject) return expected((Subject) subject);
+        if (subject instanceof Sample) return expected((Sample) subject);
         if (subject instanceof Set) return expected((Set<?>) subject);
         if (subject instanceof List) return expected((List<?>) subject);
         if (subject instanceof Map) return expected((Map<?, ?>) subject);
@@ -83,6 +90,23 @@ public class NormalizerTest {
         return result;
     }
 
+    private Sample anySample() {
+        return new Sample().setThePrimitive(random.nextInt())
+                           .setTheString(anyString())
+                           .setTheNumber(random.nextDouble())
+                           .setTheByteArray(anyBytes())
+                           .setTheList(anyList())
+                           .setTheSet(anyList())
+                           .setTheMap(anyMap())
+                           .setTheSuperPrimitive(random.nextInt())
+                           .setTheSuperString(anyString())
+                           .setTheSuperNumber(random.nextGaussian())
+                           .setTheSuperByteArray(anyBytes())
+                           .setTheSuperList(anyList())
+                           .setTheSuperSet(anyList())
+                           .setTheSuperMap(anyMap());
+    }
+
     private byte[] anyBytes() {
         final byte[] bytes = new byte[random.nextInt(32)+1];
         random.nextBytes(bytes);
@@ -94,14 +118,14 @@ public class NormalizerTest {
     }
 
     private List<Object> anyList() {
-        return asList(random.nextInt(), anyString(), anyBytes(), new Date(), new Subject(), null);
+        return asList(random.nextInt(), anyString(), anyBytes(), new Date(), new Sample(), null);
     }
 
     private Map<Object, Object> anyMap() {
         final Map<Object, Object> result = new HashMap<>(4);
         result.put(anyString(), anyBytes());
-        result.put(random.nextInt(), new Subject());
-        result.put(new Subject(), new Date());
+        result.put(random.nextInt(), new Sample());
+        result.put(new Sample(), new Date());
         result.put(null, random.nextDouble());
         result.put(random.nextLong(), null);
         return result;

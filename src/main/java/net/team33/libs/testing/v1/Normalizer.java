@@ -2,7 +2,6 @@ package net.team33.libs.testing.v1;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -18,29 +17,15 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static java.util.stream.Collectors.toMap;
 
+
+@SuppressWarnings("WeakerAccess")
 public final class Normalizer {
 
     public static final Normalizer DEFAULT = builder().build();
-
     private static final String NO_ACCESS = "cannot access field <%s> for subject <%s>";
-
-    private static final Predicate<Field> FIELD_FILTER = field -> {
-        final int modifiers = field.getModifiers();
-        return !(Modifier.isStatic(modifiers) || Modifier.isTransient(modifiers));
-    };
-
-    private static final Predicate<Class<?>> IS_VALUE_CLASS = subjectClass -> {
-        try {
-            final boolean defaultEquals = isDefault(subjectClass, "equals", Object.class);
-            final boolean defaultHashCode = isDefault(subjectClass, "hashCode");
-            final boolean defaultToString = isDefault(subjectClass, "toString");
-            return !(defaultEquals || defaultHashCode || defaultToString);
-        } catch (final NoSuchMethodException e) {
-            return false;
-        }
-    };
-
+    private static final Map<Class<?>, Map<String, Field>> FIELDS_CACHE = new ConcurrentHashMap<>(0);
     @SuppressWarnings("rawtypes")
     private final Map<Class, BiFunction> methods;
 
@@ -48,24 +33,15 @@ public final class Normalizer {
         methods = new ConcurrentHashMap<>(builder.methods);
     }
 
-    private static boolean isDefault(final Class<?> subjectClass,
-                                     final String methodName,
-                                     final Class<?>... parameters) throws NoSuchMethodException {
-        return subjectClass.getMethod(methodName, parameters)
-                           .getDeclaringClass()
-                           .equals(Object.class);
-    }
-
     public static Builder builder() {
         return new Builder();
     }
 
-    private static Object getValue(final Field field, final Object subject) {
-        try {
-            return field.get(subject);
-        } catch (final IllegalAccessException caught) {
-            throw new IllegalStateException(String.format(NO_ACCESS, field, subject), caught);
-        }
+    private static Map<String, Field> newFieldMap(final Class<?> subjectClass, final Class<?> key) {
+        return Fields.deepStreamOf(key)
+                     .filter(Fields.IS_SIGNIFICANT)
+                     .peek(field -> field.setAccessible(true))
+                     .collect(toMap(field -> Fields.compactName(subjectClass, field), field -> field));
     }
 
     public final Object normal(final Object subject) {
@@ -84,15 +60,22 @@ public final class Normalizer {
                        });
     }
 
-    public final Map<String, Object> normalFieldMap(final Class<?> subjectClass, final Object subject) {
-        final Map<String, Field> fieldMap = Stream.of(subjectClass.getDeclaredFields())
-                                                  .filter(FIELD_FILTER)
-                                                  .peek(field -> field.setAccessible(true))
-                                                  .collect(Collectors.toMap(Field::getName, field -> field));
-        return fieldMap.entrySet().stream()
-                       .collect(TreeMap::new,
-                                (map, entry) -> map.put(entry.getKey(), normal(getValue(entry.getValue(), subject))),
-                                Map::putAll);
+    public final Map<?, ?> normalFieldMap(final Class<?> subjectClass, final Object subject) {
+        return FIELDS_CACHE.computeIfAbsent(subjectClass, key -> newFieldMap(subjectClass, key))
+                           .entrySet().stream()
+                           .collect(TreeMap::new,
+                                    (map, entry) -> put(map, entry, subject),
+                                    Map::putAll);
+    }
+
+    private void put(final Map<Object, Object> map,
+                     final Map.Entry<String, Field> entry,
+                     final Object subject) {
+        try {
+            map.put(normal(entry.getKey()), normal(entry.getValue().get(subject)));
+        } catch (final IllegalAccessException caught) {
+            throw new IllegalStateException(String.format(NO_ACCESS, entry.getValue(), subject), caught);
+        }
     }
 
     public final List<Object> normalArray(final Object array) {
@@ -133,7 +116,7 @@ public final class Normalizer {
                    subjectClass -> (normalizer, subject) -> normalizer.normalList((Collection<?>) subject)),
         MAP_______(Map.class::isAssignableFrom,
                    subjectClass -> (normalizer, subject) -> normalizer.normalMap((Map<?, ?>) subject)),
-        VALUE_____(IS_VALUE_CLASS,
+        VALUE_____(Classes::isValueClass,
                    subjectClass -> (normalizer, subject) -> subject),
         COMPOSITE_(subjectClass -> false,
                    subjectClass -> (normalizer, subject) -> normalizer.normalFieldMap(subjectClass, subject));
