@@ -1,5 +1,7 @@
 package net.team33.test.testing.v1;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import net.team33.libs.testing.v1.Normalizer;
 import net.team33.test.testing.Sample;
 import org.junit.Test;
@@ -20,22 +22,29 @@ import static org.junit.Assert.assertEquals;
 
 public class NormalizerTest {
 
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting()
+                                                      .create();
+
     private final Random random = new Random();
     private final Normalizer normalizer = Normalizer.DEFAULT;
 
     @Test
     public final void normal() {
         final Sample sample = anySample();
-        final Object result = normal(sample);
+        final Object result = normalJson(sample);
         System.out.println(result);
-        assertEquals(expected(sample), result);
+        assertEquals(expectedJson(sample), result);
     }
 
-    private Object normal(final Sample sample) {
-        return normalizer.normal(sample);
+    private Object normalJson(final Sample sample) {
+        return GSON.toJson(normalizer.normal(sample));
     }
 
-    private static Map<String, Object> expected(final Sample sample) {
+    private static Object expectedJson(final Sample sample) {
+        return GSON.toJson(expected(sample));
+    }
+
+    private static Object expected(final Sample sample) {
         final Map<String, Object> result = new TreeMap<>();
         result.put("thePrimitive", sample.getThePrimitive());
         result.put("theString", sample.getTheString());
