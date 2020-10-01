@@ -4,12 +4,12 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -24,13 +24,17 @@ import static java.util.stream.Collectors.toMap;
 public final class Normalizer {
 
     public static final Normalizer DEFAULT = builder().build();
+
     private static final String NO_ACCESS = "cannot access field <%s> for subject <%s>";
     private static final Map<Class<?>, Map<String, Field>> FIELDS_CACHE = new ConcurrentHashMap<>(0);
+
     @SuppressWarnings("rawtypes")
     private final Map<Class, BiFunction> methods;
+    private final Methodology methodology;
 
     private Normalizer(final Builder builder) {
-        methods = new ConcurrentHashMap<>(builder.methods);
+        methods = new ConcurrentHashMap<>(0);
+        methodology = new Methodology(builder.methods);
     }
 
     public static Builder builder() {
@@ -49,15 +53,13 @@ public final class Normalizer {
         return getMethod(subjectClass).apply(this, subject);
     }
 
+    @SuppressWarnings("unchecked")
     private BiFunction<Normalizer, Object, Object> getMethod(final Class<?> subjectClass) {
-        //noinspection unchecked
-        return Optional.ofNullable(methods.get(subjectClass))
-                       .orElseGet(() -> {
-                           //noinspection rawtypes
-                           final BiFunction result = Category.map(subjectClass);
-                           methods.put(subjectClass, result);
-                           return result;
-                       });
+        return methods.computeIfAbsent(subjectClass, methodology::getMethod);
+    }
+
+    public final Map<?, ?> normalFieldMap(final Object subject) {
+        return normalFieldMap(subject.getClass(), subject);
     }
 
     public final Map<?, ?> normalFieldMap(final Class<?> subjectClass, final Object subject) {
@@ -140,6 +142,42 @@ public final class Normalizer {
 
         private BiFunction<Normalizer, Object, Object> apply(final Class<?> subjectClass) {
             return mapping.apply(subjectClass);
+        }
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static final class Methodology {
+
+        private final Map<Class, BiFunction> methods;
+
+        private Methodology(final Map<Class, BiFunction> methods) {
+            this.methods = Collections.unmodifiableMap(new HashMap<>(methods));
+        }
+
+        private static BiFunction<Normalizer, Object, Object> getDefault(final Class keyClass) {
+            if (keyClass.isArray())
+                return Normalizer::normalArray;
+            if (Classes.isValueClass(keyClass))
+                return (n, r) -> r;
+            throw new IllegalArgumentException("no method available for " + keyClass);
+        }
+
+        private static Optional<Class> bestMatch(final Set<Class> classSet, final Class keyClass) {
+            return classSet.stream()
+                           .filter(element -> element.isAssignableFrom(keyClass))
+                           .reduce((left, right) -> {
+                               if (Distance.to(right).from(keyClass) < Distance.to(left).from(keyClass)) {
+                                   return right;
+                               } else {
+                                   return left;
+                               }
+                           });
+        }
+
+        private BiFunction getMethod(final Class keyClass) {
+            final Optional<Class> match = bestMatch(methods.keySet(), keyClass);
+            return match.map(methods::get)
+                        .orElseGet(() -> getDefault(keyClass));
         }
     }
 

@@ -7,14 +7,7 @@ import net.team33.test.testing.Sample;
 import org.junit.Test;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
@@ -26,7 +19,16 @@ public class NormalizerTest {
                                                       .create();
 
     private final Random random = new Random();
-    private final Normalizer normalizer = Normalizer.DEFAULT;
+    private final Normalizer normalizer = Normalizer.builder()
+                                                    .addMethod(Void.class, (n, s) -> s)
+                                                    //.addMethod(Integer.class, (n, s) -> s)
+                                                    //.addMethod(Double.class, (n, s) -> s)
+                                                    .addMethod(String.class, (n, s) -> s)
+                                                    .addMethod(Set.class, Normalizer::normalSet)
+                                                    .addMethod(Collection.class, Normalizer::normalList)
+                                                    .addMethod(Map.class, Normalizer::normalMap)
+                                                    .addMethod(Sample.class, (normalizer1, subject) -> normalizer1.normalFieldMap(Sample.class, subject))
+                                                    .build();
 
     @Test
     public final void normal() {
