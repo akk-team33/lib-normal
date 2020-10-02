@@ -8,15 +8,7 @@ import net.team33.test.testing.Sample;
 import org.junit.Test;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -26,80 +18,89 @@ import static org.junit.Assert.assertEquals;
 public class NormalizerTest {
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final Function<Object, Uniform> NORMAL = Uniform.builder(GSON::toJson);
+    private static final Function<Object, Uniform> UNIFORM = Uniform.builder(GSON::toJson);
 
     private final Random random = new Random();
     private final Normalizer normalizer = Normalizer.builder()
                                                     .addMethod(Set.class, Normalizer::normalSet)
                                                     .addMethod(Collection.class, Normalizer::normalList)
                                                     .addMethod(Map.class, Normalizer::normalMap)
-                                                    .addMethod(Sample.class, (normalizer1, subject) -> normalizer1.normalFieldMap(Sample.class, subject))
+                                                    .addMethod(Sample.class, Normalizer::normalFieldMap)
                                                     .build();
 
     @Test
     public final void normal() {
         final Sample sample = anySample();
-        final Object result = normalOf(sample);
+        final Object expected = expected(sample);
+        final Object result = normalizer.normal(sample);
         System.out.println(result);
-        assertEquals(expectedOf(sample), result);
+        assertEquals(uniform(expected), uniform(result));
+
+        assertEquals(GSON.toJson(expected), uniform(expected).toString());
+        assertEquals(GSON.toJson(result), uniform(result).toString());
+
+        assertEquals(uniform(expected).toString(), GSON.toJson(result));
+        assertEquals(GSON.toJson(expected), uniform(result).toString());
     }
 
-    private Uniform normalOf(final Sample sample) {
-        return NORMAL.apply(normalizer.normal(sample));
+    private Uniform uniform(final Object subject) {
+        return UNIFORM.apply(subject);
     }
 
-    private static Uniform expectedOf(final Sample sample) {
-        return NORMAL.apply(expected(sample));
-    }
-
-    private static Object expected(final Sample sample) {
+    private static Map<String, Object> expected(final Sample sample) {
         final Map<String, Object> result = new TreeMap<>();
+        result.put("additional", "an additional field to fail the test");
         result.put("thePrimitive", sample.getThePrimitive());
         result.put("theString", sample.getTheString());
         result.put("theNumber", sample.getTheNumber());
-        result.put("theByteArray", expected(sample.getTheByteArray()));
+        result.put("theByteArray", expectedBytes(sample.getTheByteArray()));
         result.put("theObject", sample.getTheObject());
-        result.put("theList", expected(sample.getTheList()));
-        result.put("theSet", expected(sample.getTheSet()));
-        result.put("theMap", expected(sample.getTheMap()));
+        result.put("theList", expectedListOf(sample.getTheList()));
+        result.put("theSet", expectedSetOf(sample.getTheSet()));
+        result.put("theMap", expectedMapOf(sample.getTheMap()));
         result.put(".theSuperPrimitive", sample.getTheSuperPrimitive());
         result.put(".theSuperString", sample.getTheSuperString());
         result.put(".theSuperNumber", sample.getTheSuperNumber());
-        result.put(".theSuperByteArray", expected(sample.getTheSuperByteArray()));
+        result.put(".theSuperByteArray", expectedBytes(sample.getTheSuperByteArray()));
         result.put(".theSuperObject", sample.getTheSuperObject());
-        result.put(".theSuperList", expected(sample.getTheSuperList()));
-        result.put(".theSuperSet", expected(sample.getTheSuperSet()));
-        result.put(".theSuperMap", expected(sample.getTheSuperMap()));
+        result.put(".theSuperList", expectedListOf(sample.getTheSuperList()));
+        result.put(".theSuperSet", expectedSetOf(sample.getTheSuperSet()));
+        result.put(".theSuperMap", expectedMapOf(sample.getTheSuperMap()));
         return result;
     }
 
-    private static Set<?> expected(final Set<?> subjects) {
-        return (null == subjects) ? null : subjects.stream().map(NormalizerTest::expected).collect(Collectors.toSet());
+    private static Set<?> expectedSetOf(final Set<?> subjects) {
+        return (null == subjects) ? null : subjects.stream()
+                                                   .map(NormalizerTest::expectedObject)
+                                                   .collect(Collectors.toCollection(() -> new TreeSet<>(Normalizer.ORDER)));
     }
 
-    private static List<?> expected(final List<?> subjects) {
-        return (null == subjects) ? null : subjects.stream().map(NormalizerTest::expected).collect(Collectors.toList());
+    private static List<?> expectedListOf(final List<?> subjects) {
+        return (null == subjects) ? null : subjects.stream().map(NormalizerTest::expectedObject).collect(Collectors.toList());
     }
 
-    private static Map<?, ?> expected(final Map<?, ?> subjects) {
-        return (null == subjects)
-                ? null
-                : subjects.entrySet().stream().collect(
-                HashMap::new, (map, entry) -> map.put(
-                        expected(entry.getKey()),
-                        expected(entry.getValue())), Map::putAll);
+    private static Map<?, ?> expectedMapOf(final Map<?, ?> subject) {
+        return Optional.ofNullable(subject)
+                       .map(map -> map.entrySet().stream()
+                                      .collect(
+                                              () -> new TreeMap(Normalizer.ORDER),
+                                              (result, entry) -> result.put(
+                                                      expectedObject(entry.getKey()),
+                                                      expectedObject(entry.getValue())),
+                                              Map::putAll))
+                       .orElse(null);
     }
 
-    private static Object expected(final Object subject) {
-        if (subject instanceof byte[]) return expected((byte[]) subject);
+    private static Object expectedObject(final Object subject) {
+        if (subject instanceof byte[]) return expectedBytes((byte[]) subject);
         if (subject instanceof Sample) return expected((Sample) subject);
-        if (subject instanceof Set) return expected((Set<?>) subject);
-        if (subject instanceof List) return expected((List<?>) subject);
-        if (subject instanceof Map) return expected((Map<?, ?>) subject);
+        if (subject instanceof Set) return expectedSetOf((Set<?>) subject);
+        if (subject instanceof List) return expectedListOf((List<?>) subject);
+        if (subject instanceof Map) return expectedMapOf((Map<?, ?>) subject);
         return subject;
     }
 
-    private static List<Byte> expected(final byte[] bytes) {
+    private static List<Byte> expectedBytes(final byte[] bytes) {
         final List<Byte> result = new ArrayList<>(bytes.length);
         for (final byte value : bytes) {
             result.add(value);

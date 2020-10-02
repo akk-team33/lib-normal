@@ -5,11 +5,14 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
@@ -22,6 +25,7 @@ public final class Normalizer {
 
     public static final Normalizer DEFAULT = builder().build();
 
+    public static final Comparator<Object> ORDER = new Order();
     private static final String NO_ACCESS = "cannot access field <%s> for subject <%s>";
     private static final Map<Class<?>, Map<String, Field>> FIELDS_CACHE = new ConcurrentHashMap<>(0);
 
@@ -62,7 +66,7 @@ public final class Normalizer {
     public final Map<?, ?> normalFieldMap(final Class<?> subjectClass, final Object subject) {
         return FIELDS_CACHE.computeIfAbsent(subjectClass, Normalizer::newFieldMap)
                            .entrySet().stream()
-                           .collect(NormalMap::new,
+                           .collect(TreeMap::new,
                                     (map, entry) -> put(map, entry, subject),
                                     Map::putAll);
     }
@@ -95,12 +99,16 @@ public final class Normalizer {
     public final Set<?> normalSet(final Set<?> subject) {
         return subject.stream()
                       .map(this::normal)
-                      .collect(Collectors.toSet());
+                      .collect(Collectors.toCollection(() -> new TreeSet<>(ORDER)));
     }
 
     public final Map<?, ?> normalMap(final Map<?, ?> subject) {
-        return subject.entrySet().stream().collect(
-                HashMap::new, (map, entry) -> map.put(normal(entry.getKey()), normal(entry.getValue())), Map::putAll);
+        return subject.entrySet().stream()
+                      .collect(
+                              () -> new TreeMap<>(ORDER),
+                              (map, entry) -> map.put(normal(entry.getKey()),
+                                                      normal(entry.getValue())),
+                              Map::putAll);
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
@@ -157,6 +165,45 @@ public final class Normalizer {
                                            final BiFunction<Normalizer, T, Object> method) {
             methods.put(subjectClass, method);
             return this;
+        }
+    }
+
+    private static class Order implements Comparator<Object> {
+
+        @Override
+        public final int compare(final Object left, final Object right) {
+            if (null == left) {
+                return (null == right) ? 0 : -1;
+            } else if (null == right) {
+                return 1;
+            } else if (left.equals(right)) {
+                return 0;
+            }
+
+            final int result = compareString(left.toString(), right.toString());
+            if (0 == result) {
+                return Integer.compare(System.identityHashCode(left), System.identityHashCode(right));
+            } else {
+                return result;
+            }
+        }
+
+        private static int compareString(final String left, final String right) {
+            final int result = left.compareToIgnoreCase(right);
+            if (0 != result) {
+                return result;
+            } else {
+                return compareStringCaseSensitive(left, right);
+            }
+        }
+
+        private static int compareStringCaseSensitive(final String left, final String right) {
+            final int result2 = left.compareTo(right);
+            if (0 != result2) {
+                return result2;
+            } else {
+                return Integer.compare(System.identityHashCode(left), System.identityHashCode(right));
+            }
         }
     }
 }
