@@ -12,10 +12,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
-import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toMap;
 
@@ -30,11 +27,11 @@ public final class Normalizer {
 
     @SuppressWarnings("rawtypes")
     private final Map<Class, BiFunction> methods;
-    private final Methodology methodology;
+    private final Methodology methodic;
 
     private Normalizer(final Builder builder) {
         methods = new ConcurrentHashMap<>(0);
-        methodology = new Methodology(builder.methods);
+        methodic = new Methodology(builder.methods);
     }
 
     public static Builder builder() {
@@ -49,13 +46,13 @@ public final class Normalizer {
     }
 
     public final Object normal(final Object subject) {
-        final Class<?> subjectClass = (null == subject) ? Void.class : subject.getClass();
+        final Class<?> subjectClass = (null == subject) ? void.class : subject.getClass();
         return getMethod(subjectClass).apply(this, subject);
     }
 
     @SuppressWarnings("unchecked")
     private BiFunction<Normalizer, Object, Object> getMethod(final Class<?> subjectClass) {
-        return methods.computeIfAbsent(subjectClass, methodology::getMethod);
+        return methods.computeIfAbsent(subjectClass, methodic::getMethod);
     }
 
     public final Map<?, ?> normalFieldMap(final Object subject) {
@@ -106,45 +103,6 @@ public final class Normalizer {
                 HashMap::new, (map, entry) -> map.put(normal(entry.getKey()), normal(entry.getValue())), Map::putAll);
     }
 
-    private enum Category {
-
-        NULL______(Void.class::equals,
-                   subjectClass -> (normalizer, subject) -> subject),
-        ARRAY_____(Class::isArray,
-                   subjectClass -> Normalizer::normalArray),
-        SET_______(Set.class::isAssignableFrom,
-                   subjectClass -> (normalizer, subject) -> normalizer.normalSet((Set<?>) subject)),
-        LIST______(Collection.class::isAssignableFrom,
-                   subjectClass -> (normalizer, subject) -> normalizer.normalList((Collection<?>) subject)),
-        MAP_______(Map.class::isAssignableFrom,
-                   subjectClass -> (normalizer, subject) -> normalizer.normalMap((Map<?, ?>) subject)),
-        VALUE_____(Classes::isValueClass,
-                   subjectClass -> (normalizer, subject) -> subject),
-        COMPOSITE_(subjectClass -> false,
-                   subjectClass -> (normalizer, subject) -> normalizer.normalFieldMap(subjectClass, subject));
-
-        private final Predicate<Class<?>> filter;
-        private final Function<? super Class<?>, ? extends BiFunction<Normalizer, Object, Object>> mapping;
-
-        Category(final Predicate<Class<?>> filter,
-                 final Function<? super Class<?>, ? extends BiFunction<Normalizer, Object, Object>> mapping) {
-            this.filter = filter;
-            this.mapping = mapping;
-        }
-
-        private static BiFunction<Normalizer, Object, Object> map(final Class<?> subjectClass) {
-            return Stream.of(values())
-                         .filter(value -> value.filter.test(subjectClass))
-                         .findFirst()
-                         .orElse(COMPOSITE_)
-                         .apply(subjectClass);
-        }
-
-        private BiFunction<Normalizer, Object, Object> apply(final Class<?> subjectClass) {
-            return mapping.apply(subjectClass);
-        }
-    }
-
     @SuppressWarnings({"rawtypes", "unchecked"})
     private static final class Methodology {
 
@@ -155,11 +113,13 @@ public final class Normalizer {
         }
 
         private static BiFunction<Normalizer, Object, Object> getDefault(final Class keyClass) {
+            if (void.class.equals(keyClass))
+                return (ignored, subject) -> subject;
             if (keyClass.isArray())
                 return Normalizer::normalArray;
             if (Classes.isValueClass(keyClass))
-                return (n, r) -> r;
-            throw new IllegalArgumentException("no method available for " + keyClass);
+                return (ignored, subject) -> subject;
+            throw new IllegalArgumentException("no method specified for " + keyClass);
         }
 
         private static Optional<Class> bestMatch(final Set<Class> classSet, final Class keyClass) {

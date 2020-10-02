@@ -2,12 +2,22 @@ package net.team33.test.testing.v1;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import net.team33.libs.testing.v1.Normal;
 import net.team33.libs.testing.v1.Normalizer;
 import net.team33.test.testing.Sample;
 import org.junit.Test;
 
 import java.math.BigInteger;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
@@ -15,15 +25,11 @@ import static org.junit.Assert.assertEquals;
 
 public class NormalizerTest {
 
-    private static final Gson GSON = new GsonBuilder().setPrettyPrinting()
-                                                      .create();
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    private static final Function<Object, Normal> NORMAL = Normal.builder(GSON::toJson);
 
     private final Random random = new Random();
     private final Normalizer normalizer = Normalizer.builder()
-                                                    .addMethod(Void.class, (n, s) -> s)
-                                                    //.addMethod(Integer.class, (n, s) -> s)
-                                                    //.addMethod(Double.class, (n, s) -> s)
-                                                    .addMethod(String.class, (n, s) -> s)
                                                     .addMethod(Set.class, Normalizer::normalSet)
                                                     .addMethod(Collection.class, Normalizer::normalList)
                                                     .addMethod(Map.class, Normalizer::normalMap)
@@ -33,17 +39,17 @@ public class NormalizerTest {
     @Test
     public final void normal() {
         final Sample sample = anySample();
-        final Object result = normalJson(sample);
+        final Object result = normalOf(sample);
         System.out.println(result);
-        assertEquals(expectedJson(sample), result);
+        assertEquals(expectedOf(sample), result);
     }
 
-    private Object normalJson(final Sample sample) {
-        return GSON.toJson(normalizer.normal(sample));
+    private Normal normalOf(final Sample sample) {
+        return NORMAL.apply(normalizer.normal(sample));
     }
 
-    private static Object expectedJson(final Sample sample) {
-        return GSON.toJson(expected(sample));
+    private static Normal expectedOf(final Sample sample) {
+        return NORMAL.apply(expected(sample));
     }
 
     private static Object expected(final Sample sample) {
