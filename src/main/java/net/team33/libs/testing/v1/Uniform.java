@@ -8,22 +8,22 @@ import java.util.function.Function;
  *
  * @see #builder(Function)
  */
-public final class Normal {
+public final class Uniform {
 
     private final Object subject;
     private final Function<Object, String> stringRepresentationMethod;
 
-    private Normal(final Object subject, final Function<Object, String> stringRepresentationMethod) {
+    private Uniform(final Object subject, final Function<Object, String> stringRepresentationMethod) {
         this.subject = subject;
         this.stringRepresentationMethod = stringRepresentationMethod;
     }
 
     /**
-     * Retrieves a {@link Function} to build new {@link Normal} instances, each associated with a given
+     * Retrieves a {@link Function} to build new {@link Uniform} instances, each associated with a given
      * string representation method that will be used in {@link #toString()}.
      */
-    public static Function<Object, Normal> builder(final Function<Object, String> stringRepresentationMethod) {
-        return value -> new Normal(value, stringRepresentationMethod);
+    public static Function<Object, Uniform> builder(final Function<Object, String> stringRepresentationMethod) {
+        return value -> new Uniform(value, stringRepresentationMethod);
     }
 
     @Override
@@ -33,7 +33,7 @@ public final class Normal {
 
     @Override
     public final boolean equals(final Object obj) {
-        return (this == obj) || ((obj instanceof Normal) && subject.equals(((Normal) obj).subject));
+        return (this == obj) || ((obj instanceof Uniform) && subject.equals(((Uniform) obj).subject));
     }
 
     @Override

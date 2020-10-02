@@ -2,7 +2,7 @@ package net.team33.test.testing.v1;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import net.team33.libs.testing.v1.Normal;
+import net.team33.libs.testing.v1.Uniform;
 import net.team33.libs.testing.v1.Normalizer;
 import net.team33.test.testing.Sample;
 import org.junit.Test;
@@ -26,7 +26,7 @@ import static org.junit.Assert.assertEquals;
 public class NormalizerTest {
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final Function<Object, Normal> NORMAL = Normal.builder(GSON::toJson);
+    private static final Function<Object, Uniform> NORMAL = Uniform.builder(GSON::toJson);
 
     private final Random random = new Random();
     private final Normalizer normalizer = Normalizer.builder()
@@ -44,11 +44,11 @@ public class NormalizerTest {
         assertEquals(expectedOf(sample), result);
     }
 
-    private Normal normalOf(final Sample sample) {
+    private Uniform normalOf(final Sample sample) {
         return NORMAL.apply(normalizer.normal(sample));
     }
 
-    private static Normal expectedOf(final Sample sample) {
+    private static Uniform expectedOf(final Sample sample) {
         return NORMAL.apply(expected(sample));
     }
 
