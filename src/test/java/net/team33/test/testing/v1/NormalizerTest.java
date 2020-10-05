@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import net.team33.libs.testing.v1.Normalizer;
 import net.team33.libs.testing.v1.Uniform;
 import net.team33.test.testing.Sample;
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.math.BigInteger;
@@ -18,6 +19,7 @@ import java.util.Set;
 import java.util.function.Function;
 
 import static java.util.Arrays.asList;
+import static net.team33.test.testing.v1.Competing.*;
 import static org.junit.Assert.assertEquals;
 
 public class NormalizerTest {
@@ -35,6 +37,20 @@ public class NormalizerTest {
 
     private static Uniform pretty(final Object subject) {
         return UNIFORM.apply(subject);
+    }
+
+    @Test
+    public final void normalCompeting() {
+        final Normalizer normalizer = Normalizer.builder()
+                                                .addMethod(E.class, (n, c) -> E.class.getCanonicalName())
+                                                .addMethod(D.class, (n, c) -> D.class.getCanonicalName())
+                                                .addMethod(C.class, (n, c) -> C.class.getCanonicalName())
+                                                .build();
+
+        assertEquals(C.class.getCanonicalName(), normalizer.normal(new C()));
+        assertEquals(D.class.getCanonicalName(), normalizer.normal(new D()));
+        assertEquals(E.class.getCanonicalName(), normalizer.normal(new E()));
+        assertEquals(D.class.getCanonicalName(), normalizer.normal(new F()));
     }
 
     @Test

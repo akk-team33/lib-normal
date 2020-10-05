@@ -163,7 +163,7 @@ public final class Normalizer {
             return classSet.stream()
                            .filter(element -> element.isAssignableFrom(keyClass))
                            .reduce((left, right) -> {
-                               if (Distance.to(right).from(keyClass) < Distance.to(left).from(keyClass)) {
+                               if (Distance.of(right).from(keyClass) < Distance.of(left).from(keyClass)) {
                                    return right;
                                } else {
                                    return left;
@@ -178,6 +178,9 @@ public final class Normalizer {
         }
     }
 
+    /**
+     * A builder for new instances of {@link Normalizer}.
+     */
     public static final class Builder {
 
         @SuppressWarnings("rawtypes")
@@ -186,14 +189,31 @@ public final class Normalizer {
         private Builder() {
         }
 
-        public final Normalizer build() {
-            return new Normalizer(this);
-        }
-
+        /**
+         * <p>Adds a method that will be used by a {@link #build() resulting} {@link Normalizer} to
+         * {@link #normal(Object) normalize} instances of a particular class or one of its derivatives.
+         * The method will get two parameters:</p>
+         * <ol>
+         *     <li>The executing {@link Normalizer} itself</li>
+         *     <li>The instance to be normalized, so called: {@code subject}</li>
+         * </ol>
+         *
+         * <p>If different methods defined in this way compete in a specific application, because a {@code subject} can
+         * be assigned to several classes, the method is used whose associated class in the hierarchy is closer to the
+         * original class of the {@code subject}.</p>
+         *
+         * <p>If different methods continue to compete because the {@code subject} can be assigned to several classes
+         * that are equally close in the hierarchy to the original class of the {@code subject}, the method that was
+         * added here last is used.</p>
+         */
         public final <T> Builder addMethod(final Class<T> subjectClass,
                                            final BiFunction<Normalizer, T, Object> method) {
             methods.put(subjectClass, method);
             return this;
+        }
+
+        public final Normalizer build() {
+            return new Normalizer(this);
         }
     }
 
